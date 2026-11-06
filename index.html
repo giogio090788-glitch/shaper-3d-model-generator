@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shaper — AI 3D Model Studio</title>
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+
+<header class="glass topbar">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81b64c" stroke-width="1.6">
+      <path d="M12 2 21 7v10l-9 5-9-5V7l9-5z"/><path d="M12 12 21 7M12 12v10M12 12 3 7"/>
+    </svg>
+    <span>SHAPER</span><span class="tag">AI 3D Studio</span>
+  </div>
+  <div class="provider-pill">
+    <span class="dot" id="providerDot"></span><span id="providerLabel">Local engine</span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: controls -->
+  <aside class="glass panel controls">
+    <div class="tabs">
+      <button class="tab active" data-tab="text">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+        Text to 3D
+      </button>
+      <button class="tab" data-tab="image">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>
+        Image to 3D
+      </button>
+    </div>
+
+    <section id="tab-text" class="tabpane active">
+      <label class="lbl">Describe your model</label>
+      <textarea id="prompt" rows="3" placeholder="a crystal castle on a floating rock, gold trim..."></textarea>
+
+      <div class="enhancer">
+        <div class="enh-head">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"/></svg>
+          <span>Prompt enhancer</span><span class="tag-inline">LLM</span>
+        </div>
+        <div class="row">
+          <select id="enhProvider">
+            <option value="none">Off</option>
+            <option value="openai">OpenAI · GPT</option>
+            <option value="claude">Anthropic · Claude</option>
+            <option value="kimi">Moonshot · Kimi K3</option>
+            <option value="qwen">Alibaba · Qwen</option>
+            <option value="llama">Meta · Llama (OpenRouter)</option>
+            <option value="ollama">Local · Ollama</option>
+          </select>
+          <button id="enhanceBtn" class="mini-cta" title="Expand idea into a detailed 3D prompt">Enhance</button>
+        </div>
+        <div id="enhConfig" class="hidden">
+          <input type="password" id="enhKey" placeholder="API key" autocomplete="off" />
+          <input type="text" id="enhModel" placeholder="model (optional)" />
+        </div>
+      </div>
+
+      <label class="lbl">3D engine</label>
+      <select id="textEngine">
+        <option value="local">Local procedural (offline, instant)</option>
+        <option value="shape">Shap-E — OpenAI neural (local, needs torch)</option>
+        <option value="meshy">Meshy cloud AI</option>
+        <option value="tripo">Tripo AI cloud</option>
+      </select>
+
+      <div id="textKeyWrap" class="keywrap hidden">
+        <input type="password" id="textKey" placeholder="API key" autocomplete="off" />
+        <p class="hint" id="textKeyHint"></p>
+      </div>
+      <p class="hint shape-only hidden">Runs fully local. First use downloads ~1 GB of weights and takes minutes on CPU.</p>
+
+      <div class="local-only">
+        <label class="lbl">Complexity <span class="val" id="complexityVal">3</span></label>
+        <input type="range" id="complexity" min="1" max="6" value="3" />
+        <label class="lbl">Seed <span class="hint">(blank = random)</span></label>
+        <input type="number" id="seed" placeholder="random" />
+      </div>
+
+      <div class="meshy-only hidden">
+        <label class="lbl">Art style</label>
+        <select id="artStyle">
+          <option value="realistic">Realistic</option>
+          <option value="sculpture">Sculpture</option>
+        </select>
+      </div>
+    </section>
+
+    <section id="tab-image" class="tabpane">
+      <label class="lbl">Source image</label>
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4m0 0 4 4m-4-4-4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        <span>Drop image or click to browse</span>
+        <input type="file" id="imageInput" accept="image/*" hidden />
+      </div>
+      <img id="imagePreview" class="hidden" alt="preview" />
+
+      <label class="lbl">3D engine</label>
+      <select id="imageEngine">
+        <option value="local">Local converters (offline, instant)</option>
+        <option value="meshy">Meshy cloud AI</option>
+        <option value="tripo">Tripo AI cloud</option>
+        <option value="sf3d">Stability · Stable Fast 3D</option>
+        <option value="spar3d">Stability · SPAR3D</option>
+      </select>
+
+      <div id="imageKeyWrap" class="keywrap hidden">
+        <input type="password" id="imageKey" placeholder="API key" autocomplete="off" />
+        <p class="hint" id="imageKeyHint"></p>
+      </div>
+
+      <div class="local-only">
+        <label class="lbl">Conversion mode</label>
+        <div class="seg" id="imageMode">
+          <button class="segbtn active" data-v="relief">Relief heightmap</button>
+          <button class="segbtn" data-v="extrude">Silhouette extrude</button>
+        </div>
+        <label class="lbl">Depth <span class="val" id="depthVal">0.5</span></label>
+        <input type="range" id="depth" min="0.05" max="2" step="0.05" value="0.5" />
+        <label class="lbl">Silhouette threshold <span class="val" id="thresholdVal">128</span></label>
+        <input type="range" id="threshold" min="10" max="245" value="128" />
+        <label class="lbl">Smoothing <span class="val" id="smoothVal">1</span></label>
+        <input type="range" id="smooth" min="0" max="4" value="1" />
+      </div>
+    </section>
+
+    <button id="generateBtn" class="cta">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+      Generate
+    </button>
+    <p id="statusMsg" class="status"></p>
+  </aside>
+
+  <!-- CENTER: viewport -->
+  <section class="viewport-wrap">
+    <div id="viewport"></div>
+    <div class="glass viewport-tools">
+      <button class="vtool" id="rotateBtn" title="Auto-rotate">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <button class="vtool" id="wireBtn" title="Wireframe">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 21 7v10l-9 5-9-5V7l9-5z"/><path d="M12 12 21 7M12 12v10M12 12 3 7M3 17l9-5 9 5"/></svg>
+      </button>
+      <div class="vsep"></div>
+      <button class="bgsw active" data-bg="dark" style="--sw:#211f1c" title="Dark"></button>
+      <button class="bgsw" data-bg="moss" style="--sw:#26311e" title="Moss"></button>
+      <button class="bgsw" data-bg="slate" style="--sw:#22303c" title="Slate"></button>
+    </div>
+    <div class="glass viewport-hud">
+      <span id="hudInfo">No model loaded</span>
+    </div>
+    <div id="spinner" class="spinner hidden"><div class="ring"></div><span id="spinnerText">Generating…</span></div>
+  </section>
+
+  <!-- RIGHT: export + library -->
+  <aside class="glass panel side">
+    <h3>Export</h3>
+    <div class="export-grid">
+      <button class="exp" data-fmt="glb">GLB</button>
+      <button class="exp" data-fmt="obj">OBJ</button>
+      <button class="exp" data-fmt="stl">STL</button>
+      <button class="exp" data-fmt="ply">PLY</button>
+    </div>
+    <button id="blenderBtn" class="blender">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="14" r="4"/><path d="M12 10V3m0 0h7M12 3H5m15 8a7 7 0 1 1-14 0"/></svg>
+      Blender import script
+    </button>
+    <p class="hint">Blender imports GLB/OBJ/STL/PLY natively via File → Import. The script sets up an empty scene + smooth shading for you.</p>
+
+    <h3>Library</h3>
+    <div id="library" class="library"></div>
+  </aside>
+</main>
+
+<div id="toasts"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
